@@ -1,7 +1,24 @@
 import * as fs from 'fs';
 import * as Papa from 'papaparse';
+import { User } from "./user"
+import { Transaction } from "./transaction"
+import { readFromFiles as readFiles } from "./parser"
 const moment = require('moment');
+var log4js = require("log4js");
+var readlineSync = require('readline-sync');
 
+
+const logger = log4js.getLogger('<filename>');
+
+
+log4js.configure({
+    appenders: {
+        file: { type: 'fileSync', filename: 'logs/debug.log' }
+    },
+    categories: {
+        default: { appenders: ['file'], level: 'debug'}
+    }
+});
 
 function listAll(users: User[]){
     console.log("Name       Money Ownwed    Money Owed");
@@ -9,10 +26,6 @@ function listAll(users: User[]){
     for (let index = 0; index < users.length; index++) {
         console.log(users[index].name + '           ' + users[index].moneyOwned + '         ' + users[index].moneyOwed);
     }
-}
-
-function hasEntry(array, newEntry, comparator) {
-  return array.find(existingEntry => comparator(existingEntry, newEntry)) !== undefined;
 }
 
 function listAccount(acc: number){
@@ -27,89 +40,13 @@ function listAccount(acc: number){
     }
 }
 
-class User{
-    name: string;
-    moneyOwned: number = 0;
-    moneyOwed: number = 0;
-    transactions: Transaction[] = [];
-}
-
-class Transaction{
-    date: Date;
-    from: string;
-    to: string;
-    narrative: string;
-    amount: number;
-}
-
-type csvData = {
-    date: Date;
-    from: string;
-    to: string;
-    narrative:string;
-    amount: number;
-}
-
-const file = fs.readFileSync('./Transactions2014.csv', 'utf8');
- 
-const parsed = Papa.parse<csvData>(file, {
-  delimiter: ',',
-  dynamicTyping: true,
-  header: true,
-  skipEmptyLines: true,
-});
- 
-const { data } = parsed;
-console.log(data.length);
-console.log(data);
-
-var readlineSync = require('readline-sync');
-
 let users: User[] = [];
 let usernames: string[] = [];
 let transactions: Transaction[] = [];
-for (let index = 0; index < data.length; index++) {
-    let userFrom = new User();
-    userFrom.name = data[index]?.['From'];
-    const itContains = hasEntry(users, userFrom, (a, b) => a.name === b.name);
-    if(!itContains){
-        users.push(userFrom);
-        usernames.push(userFrom.name);
-    }
-
-    let userTo = new User();
-    userTo.name = data[index]?.['From'];
-    const itContains2 = hasEntry(users, userTo, (a, b) => a.name === b.name);
-    if(!itContains2){
-        users.push(userTo);
-        usernames.push(userTo.name);
-    }
-}
-
-
-for (let index = 0; index < data.length; index++) {
-    let transaction = new Transaction();
-    transaction.date = data[index]?.['Date'];
-    transaction.from = data[index]?.['From'];
-    transaction.to = data[index]?.['To'];
-    transaction.narrative = data[index]?.['Narrative'];
-    transaction.amount = data[index]?.['Amount'];
-    transactions.push(transaction);
-
-    let toIndex: number = users.findIndex(
-        (user: User) => user.name === transaction.to
-    );
-
-    console.log('toIndex: ' + toIndex);
-    users[toIndex].moneyOwned += transaction.amount;
-    users[toIndex].transactions.push(transaction);
-    let fromIndex: number = users.findIndex(
-        (user: User) => user.name === transaction.from
-    );
-    console.log('fromIndex: ' + fromIndex);
-    users[fromIndex].moneyOwed += transaction.amount;
-    users[fromIndex].transactions.push(transaction);
-}
+let file:string = 'Transactions2014.csv';
+readFiles(file, users, usernames, transactions);
+file = 'DodgyTransactions2015.csv';
+readFiles(file, users, usernames, transactions);
 
 
 let options: string[] = ['List All', 'List Account'];
